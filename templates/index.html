@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio Grabber</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #181b25;
+    --border: #2a2f3f;
+    --text: #e8eaf0;
+    --muted: #8b91a5;
+    --accent: #7c5cff;
+    --accent-hover: #8f73ff;
+    --success: #3ddc84;
+    --error: #ff5c72;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.45);
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  h1 .dot { color: var(--accent); }
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  input[type="url"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 15px;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input[type="url"]:focus { border-color: var(--accent); }
+  input[type="url"]::placeholder { color: #555b70; }
+  .row { display: flex; gap: 12px; margin-top: 20px; align-items: flex-end; }
+  .format-toggle {
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+  }
+  .format-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .format-toggle button.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .convert-btn {
+    flex: 1;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 14px 20px;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+  }
+  .convert-btn:hover:not(:disabled) { background: var(--accent-hover); }
+  .convert-btn:active:not(:disabled) { transform: scale(.98); }
+  .convert-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .status {
+    margin-top: 24px;
+    display: none;
+  }
+  .status.visible { display: block; }
+  .status-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .progress-track {
+    background: var(--bg);
+    border-radius: 99px;
+    height: 8px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    background: linear-gradient(90deg, var(--accent), #a78bfa);
+    height: 100%;
+    width: 0%;
+    border-radius: 99px;
+    transition: width .3s ease;
+  }
+  .progress-fill.indeterminate {
+    width: 40% !important;
+    animation: slide 1.2s ease-in-out infinite;
+  }
+  @keyframes slide {
+    0% { margin-left: -40%; }
+    100% { margin-left: 100%; }
+  }
+  .status-detail {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .status-detail.success { color: var(--success); }
+  .status-detail.error { color: var(--error); word-break: break-word; }
+  .reveal-btn {
+    margin-top: 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 16px;
+    cursor: pointer;
+    display: none;
+    transition: border-color .15s;
+  }
+  .reveal-btn:hover { border-color: var(--accent); }
+  .reveal-btn.visible { display: inline-block; }
+  .footnote {
+    margin-top: 28px;
+    font-size: 12px;
+    color: #555b70;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Audio Grabber<span class="dot">.</span></h1>
+    <p class="subtitle">Paste a YouTube or SoundCloud link — get the audio in best quality. No video, just sound.</p>
+
+    <label for="url">Link</label>
+    <input type="url" id="url" placeholder="https://www.youtube.com/watch?v=… or soundcloud.com/…" autofocus spellcheck="false">
+
+    <div class="row">
+      <div class="format-toggle" id="formatToggle">
+        <button class="active" data-fmt="mp3">MP3</button>
+        <button data-fmt="wav">WAV</button>
+      </div>
+      <button class="convert-btn" id="convertBtn">Convert</button>
+    </div>
+
+    <div class="status" id="status">
+      <div class="status-title" id="statusTitle"></div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="status-detail" id="statusDetail"></div>
+      <button class="reveal-btn" id="revealBtn">Show in Finder</button>
+    </div>
+
+    <p class="footnote">MP3 is encoded at the highest VBR quality (~V0). WAV is a lossless conversion of the source audio. Files are saved to your Downloads folder.</p>
+  </div>
+
+<script>
+  const urlInput = document.getElementById('url');
+  const convertBtn = document.getElementById('convertBtn');
+  const formatToggle = document.getElementById('formatToggle');
+  const statusBox = document.getElementById('status');
+  const statusTitle = document.getElementById('statusTitle');
+  const statusDetail = document.getElementById('statusDetail');
+  const progressFill = document.getElementById('progressFill');
+  const revealBtn = document.getElementById('revealBtn');
+
+  let fmt = 'mp3';
+  let currentJob = null;
+  let pollTimer = null;
+
+  formatToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-fmt]');
+    if (!btn) return;
+    fmt = btn.dataset.fmt;
+    formatToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  });
+
+  urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') startConvert(); });
+  convertBtn.addEventListener('click', startConvert);
+
+  revealBtn.addEventListener('click', () => {
+    if (currentJob) fetch(`/reveal/${currentJob}`, { method: 'POST' });
+  });
+
+  async function startConvert() {
+    const url = urlInput.value.trim();
+    if (!url) { urlInput.focus(); return; }
+
+    convertBtn.disabled = true;
+    revealBtn.classList.remove('visible');
+    statusBox.classList.add('visible');
+    statusTitle.textContent = 'Fetching info…';
+    statusDetail.textContent = '';
+    statusDetail.className = 'status-detail';
+    progressFill.style.width = '0%';
+    progressFill.classList.add('indeterminate');
+
+    try {
+      const res = await fetch('/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, format: fmt })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+      currentJob = data.job_id;
+      pollTimer = setInterval(poll, 500);
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  async function poll() {
+    try {
+      const res = await fetch(`/progress/${currentJob}`);
+      const job = await res.json();
+      if (!res.ok) throw new Error(job.error || 'Lost track of the job.');
+
+      if (job.title) statusTitle.textContent = job.title;
+
+      if (job.status === 'downloading') {
+        progressFill.classList.remove('indeterminate');
+        progressFill.style.width = job.progress + '%';
+        statusDetail.textContent = `Downloading… ${job.progress}%`;
+      } else if (job.status === 'converting') {
+        progressFill.classList.add('indeterminate');
+        statusDetail.textContent = `Converting to ${fmt.toUpperCase()}…`;
+      } else if (job.status === 'done') {
+        clearInterval(pollTimer);
+        progressFill.classList.remove('indeterminate');
+        progressFill.style.width = '100%';
+        statusDetail.textContent = job.filename
+          ? `Saved to Downloads — ${job.filename}`
+          : 'Saved to your Downloads folder.';
+        statusDetail.className = 'status-detail success';
+        revealBtn.classList.add('visible');
+        convertBtn.disabled = false;
+      } else if (job.status === 'error') {
+        clearInterval(pollTimer);
+        showError(job.error || 'Download failed.');
+      }
+    } catch (err) {
+      clearInterval(pollTimer);
+      showError(err.message);
+    }
+  }
+
+  function showError(msg) {
+    progressFill.classList.remove('indeterminate');
+    progressFill.style.width = '0%';
+    statusTitle.textContent = 'Error';
+    statusDetail.textContent = msg;
+    statusDetail.className = 'status-detail error';
+    convertBtn.disabled = false;
+  }
+</script>
+</body>
+</html>
